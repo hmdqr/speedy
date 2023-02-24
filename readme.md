@@ -27,8 +27,8 @@ If you would like to contribute to Speedy, I welcome all levels of experience an
 
 To submit a bug report or feature request, follow these steps:
 
-1. Go to the Speedy GitHub page at https://github.com/hmdqr/speedy.
-2. Click on the "Issues" tab and then click the button labeled "New Issue" to create a new issue. 
+1. Go to the [Speedy issues page](https://github.com/hmdqr/speedy/issues)
+2. click the button labeled "New Issue" to create a new issue. 
 3. Fill out the form with a detailed description of the bug or feature request. Be sure to include steps to reproduce the bug, if applicable.
 
 Thank you for your support!
