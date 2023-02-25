@@ -1,68 +1,85 @@
 import wx
 import threading
 import speedtest
-from speedy_frame import *
+from wx.lib.newevent import NewCommandEvent
 
+# Define a custom event class for when the speed test is completed
+SpeedtestCompletedEvent, EVT_SPEEDTEST_COMPLETED = NewCommandEvent()
 
-def on_start(event):
-    frame = event.GetEventObject().GetParent()
-    frame.disable_start_button()
-    frame.show_cancel_button()
-    frame.update_status_label("testing, please wait...")
-    frame.output.SetValue("")
-    frame.progress.SetValue(0)
-    frame.set_cancelled(False)
-    frame.speed = speedtest.Speedtest()
-    frame.thread = threading.Thread(target=run_speedtest, args=(frame,))
-    frame.thread.start()
-    frame.append_output_text("Speed test started.\n")
+EVT_SPEEDTEST_CANCELLED = wx.NewEventType()
 
+class SpeedyEvents():
+    def __init__(self, frame):
+        self.frame = frame
 
-def on_cancel(event):
-    frame = event.GetEventObject().GetParent()
-    frame.set_cancelled(True)
-    frame.cancel.Disable()
-    frame.update_status_label("test cancelled")
-    frame.progress.SetValue(0)
-    frame.enable_start_button()
-    frame.hide_cancel_button()
-    frame.append_output_text("Speed test cancelled.\n")
+    def on_start(self, event):
+        print("on_start called")
+        self.frame.disable_start_button()
+        self.frame.show_cancel_button()
+        self.frame.update_status_label("Testing, please wait...")
+        self.frame.output.SetValue("")
+        self.frame.progress.SetValue(0)
+        self.frame.set_cancelled(False)
+        self.frame.speed = speedtest.Speedtest()
+        print("Getting best server...")
+        self.frame.speed.get_best_server()
+        print("Done getting best server.")
+        self.frame.thread = threading.Thread(target=self.run_speedtest, args=(self.frame,))
+        self.frame.thread.start()
+        self.frame.append_output_text("Speed test started.\n")
+        self.frame.set_focus_to_cancel_button()
 
+        # Change the "Start" button to a "Cancel" button
+        self.frame.start_button.SetLabel("Cancel")
+        self.frame.start_button.Bind(wx.EVT_BUTTON, self.on_cancel)
 
-def run_speedtest(frame):
-    try:
-        # Find best server and test download speed
-        frame.speed.get_best_server()
-        frame.update_status_label("testing download speed...")
-        frame.append_output_text("Testing download speed...\n")
-        download_speed = frame.speed.download(threads=None, callback=frame.update_progress_bar)
+    def on_cancel(self, event):
+        frm = event.GetEventObject().GetParent()
+        frm.c = True
+        frm.cancel.Disable()
+        frm.status.SetLabel("Test cancelled")
+        frm.progress.SetValue(0)
+        frm.start.Enable()
+        frm.cancel.Hide()
+        frm.append_output_text("Speed test cancelled.\n")
+        frm.start.SetFocus()
+        frm.start.SetLabel("Start")
+        frm.start.Bind(wx.EVT_BUTTON, self.on_start)
 
-        # Check if test was cancelled
-        if frame.is_cancelled():
-            return
+        # Fire the SpeedtestCancelledEvent to notify the frame that the speed test is cancelled
+        evt = wx.PyCommandEvent(EVT_SPEEDTEST_CANCELLED)
+        wx.PostEvent(frm, evt)
 
-        # Test upload speed
-        frame.update_status_label("testing upload speed...")
-        frame.append_output_text("Testing upload speed...\n")
-        upload_speed = frame.speed.upload(threads=None, callback=frame.update_progress_bar)
+    def run_speedtest(self, frm):
+        try:
+            frm.speed.get_best_server()
+            frm.update_status_label("Testing download speed...")
+            frm.append_output_text("Testing download speed...\n")
+            dl_speed = frm.speed.download(threads=None, callback=lambda c, t: frm.progress.SetValue(int(c / t * 100)))
+            if frm.c:
+                return
+            frm.update_status_label("Testing upload speed...")
+            frm.append_output_text("Testing upload speed...\n")
+            ul_speed = frm.speed.upload(threads=None, callback=lambda c, t: frm.progress.SetValue(int(c / t * 100)))
+            if frm.c:
+                return
+            frm.enable_start_button()
+            frm.hide_cancel_button()
+            frm.set_progress_value(100)
+            out_text = f"Download speed: {dl_speed / 1_000_000:.2f} Mbps\nUpload speed: {ul_speed / 1_000_000:.2f} Mbps"
+            frm.update_status_label(out_text)
+            frm.append_output_text(out_text + "\n")
+            frm.append_output_text("Speed test completed.\n")
+            frm.set_focus_to_start_button()
+            frm.set_start_button_label("Start")
+            frm.start.Bind(wx.EVT_BUTTON, self.on_start)
 
-        # Check if test was cancelled
-        if frame.is_cancelled():
-            return
+            # Fire the SpeedtestCompletedEvent to notify the frame that the speed test is completed
+            evt = SpeedtestCompletedEvent(ping_speed=0, download_speed=dl_speed, upload_speed=ul_speed)
+            wx.PostEvent(frm, evt)
 
-        # Enable start button, hide cancel button, and set progress bar to 100%
-        frame.enable_start_button()
-        frame.hide_cancel_button()
-        frame.progress.SetValue(100)
-
-        # Display speed test results in status label and output
-        output_text = f"Download speed: {download_speed / 1_000_000:.2f} Mbps\nUpload speed: {upload_speed / 1_000_000:.2f} Mbps"
-        frame.update_status_label(output_text)
-        frame.append_output_text(output_text + "\n")
-        frame.append_output_text("Speed test completed.\n")
-    except Exception as e:
-        frame.enable_start_button()
-        frame.hide_cancel_button()
-        frame.progress.SetValue(0)
-        frame.update_status_label("An error occurred during the speed test. Please try again later.")
-        frame.append_output_text("An error occurred during the speed test: " + str(e) + "\n")
+        except Exception as e:
+            frm.enable_start_button()
+            frm.hide_cancel_button()
+            frm.set_progress_value(0)
+            frm.update_status_label("An error occurred during the speed test. Please try again later.")
