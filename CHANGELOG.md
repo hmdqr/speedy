@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## - 25-02-2023
 
+### new
+
+Improved error handling by displaying error messages in a clear and user-friendly manner.
+
+### fixes
+
+fixed a lot internal errors
+## - 25-02-2023
+
 ### Added
 - Support for cancelling a speed test
 - `set_cancelled()` method to `SpeedyFrame` to set the test cancellation state
