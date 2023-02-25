@@ -17,6 +17,9 @@ class SpeedyFrame(wx.Frame):
         hbox1.Add(self.ping_text, flag=wx.RIGHT, border=8)
         vbox.Add(hbox1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
 
+        self.progress = wx.Gauge(panel, range=100, size=(250, 25), style=wx.GA_HORIZONTAL|wx.GA_SMOOTH)
+        vbox.Add(self.progress, flag=wx.ALIGN_CENTER|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
+
         hbox2 = wx.BoxSizer(wx.HORIZONTAL)
         st2 = wx.StaticText(panel, label="Download:")
         hbox2.Add(st2, flag=wx.RIGHT, border=8)
@@ -44,15 +47,17 @@ class SpeedyFrame(wx.Frame):
         self.start_button.Bind(wx.EVT_BUTTON, self.on_start)
         self.cancel_button.Bind(wx.EVT_BUTTON, self.on_cancel)
 
-        self.speedtest_thread = None
-        self.speed = None
+        self.speedtest_thread = threading.Thread()
+        self.speedtest_thread = threading.Thread()
+        self.speed = speedtest.Speedtest()
+        self.speed.get_best_server()
         self.c = False
 
     def on_start(self, event):
         self.disable_start_button()
         self.show_cancel_button()
         self.update_status_label("Testing, please wait...")
-        self.output.SetValue("")
+        self.ping_text.SetValue("")
         self.progress.SetValue(0)
         self.c = False
         self.speed = speedtest.Speedtest()
@@ -61,88 +66,77 @@ class SpeedyFrame(wx.Frame):
         self.speedtest_thread.start()
         self.append_output_text("Speed test started.\n")
         self.set_focus_to_cancel_button()
-        self.start.SetLabel("Cancel")
-        self.start.Bind(wx.EVT_BUTTON, self.on_cancel)
-
-    def on_cancel(self, event):
-        self.c = True
-        self.cancel.Disable()
-        self.status.SetLabel("Test cancelled")
-        self.progress.SetValue(0)
-        self.start.Enable()
-        self.cancel.Hide()
-        self.append_output_text("Speed test cancelled.\n")
-        self.start.SetFocus()
-        self.start.SetLabel("Start")
-        self.start.Bind(wx.EVT_BUTTON, self.on_start)
-
-    def run_speedtest(self):
-        try:
-            self.speed.get_best_server()
-            self.update_status_label("Testing download speed...")
-            self.append_output_text("Testing download speed...\n")
-            dl_speed = self.speed.download(threads=None, callback=lambda c, t: self.progress.SetValue(int(c / t * 100)))
-            if self.c:
-                return
-            self.update_status_label("Testing upload speed...")
-            self.append_output_text("Testing upload speed...\n")
-            ul_speed = self.speed.upload(threads=None, callback=lambda c, t: self.progress.SetValue(int(c / t * 100)))
-            if self.c:
-                return
-            self.enable_start_button()
-            self.hide_cancel_button()
-            self.set_progress_value(100)
-            out_text = f"Download speed: {dl_speed / 1_000_000:.2f} Mbps\nUpload speed: {ul_speed / 1_000_000:.2f} Mbps"
-            self.update_status_label(out_text)
-            self.append_output_text(out_text + "\n")
-            self.append_output_text("Speed test completed.\n")
-            self.set_focus_to_start_button()
-            self.set_start_button_label("Start")
-            self.start.Bind(wx.EVT_BUTTON, self.on_start)
-
-            # Publish the SpeedtestCompletedEvent to notify other parts of the application that the speed test is completed
-            pub.sendMessage("speedtest_completed", ping_speed=0, download_speed=dl_speed, upload_speed=ul_speed)
-
-        except Exception as e:
-            self.enable_start_button()
-            self.hide_cancel_button()
-            self.set_progress_value(0)
-            self.update_status_label("An error occurred during the speed test. Please try again later.")
-            wx.LogError(str(e))
-
-    def set_cancelled(self, value):
-        self.c = value
-
-    def hide_cancel_button(self):
-        self.cancel.Hide()
-
-    def set_focus_to_start_button(self):
-        self.start.SetFocus()
-
-    def set_focus_to_cancel_button(self):
-        self.cancel.SetFocus()
-
-    def set_start_button_label(self, label):
-        self.start.SetLabel(label)
-
-    def set_cancel_button_label(self, label):
-        self.cancel.SetLabel(label)
-
-    def enable_start_button(self):
-        self.start.Enable()
+        self.start_button.SetLabel("Cancel")
+        self.start_button.Bind(wx.EVT_BUTTON, self.on_cancel)
 
     def disable_start_button(self):
         self.start_button.Disable()
 
-    def show_cancel_button(self):
-        self.cancel.Show()
+    def on_cancel(self, event):
+        self.c = True
+        self.cancel_button.Disable()
+        self.update_status_label("Test cancelled")
+        self.progress.SetValue(0)
+        self.enable_start_button()
+        self.hide_cancel_button()
+        self.set_focus_to_start_button()
+        self.set_start_button_label("Start")
+        self.start_button.Bind(wx.EVT_BUTTON, self.on_start)
+    def run_speedtest(self):
+        try:
+            self.speed.get_best_server()
+            self.speed.download(callback=self.speedtest_callback)
+            self.speed.upload(callback=self.speedtest_callback)
+            results_dict = self.speed.results.dict()
+            self.display_results(results_dict)
+        except speedtest.NoMatchedServers as e:
+            self.display_error(str(e))
+        except Exception as e:
+            self.display_error(str(e))
+    
+    def speedtest_callback(self, speed):
+        progress = int(speed / 1000000)
+        self.set_progress_value(progress)
+    
+    def display_results(self, results_dict):
+        ping = results_dict["ping"]
+        download = results_dict["download"] / 1000000
+        upload = results_dict["upload"] / 1000000
+        ping_str = f"{ping:.2f} ms"
+        download_str = f"{download:.2f} Mbps"
+        upload_str = f"{upload:.2f} Mbps"
+        self.update_status_label(f"Ping: {ping_str}    Download: {download_str}    Upload: {upload_str}")
+    
+    def display_error(self, error):
+        wx.CallAfter(pub.sendMessage, "SPEEDY_ERROR", message=error)
 
-    def append_output_text(self, text):
-        self.output.AppendText(text)
+    def show_cancel_button(self):
+        self.cancel_button.Show()
 
     def update_status_label(self, text):
-        self.status.SetLabel(text)
+        self.ping_text.SetLabel(text)
 
     def set_progress_value(self, value):
         self.progress.SetValue(value)
 
+    def set_cancelled(self, value):
+        self.c = value
+
+    def append_output_text(self, text):
+        self.ping_text.SetLabel(self.ping_text.GetLabel() + text)
+
+
+    def enable_start_button(self):
+        self.start_button.Enable()
+
+
+    def set_focus_to_cancel_button(self):
+        self.cancel_button.SetFocus()
+    def set_focus_to_start_button(self):
+        self.start_button.SetFocus()
+
+    def hide_cancel_button(self):
+        self.cancel_button.Hide()
+
+    def set_start_button_label(self, label):
+        self.start_button.SetLabel(label)

@@ -17,15 +17,15 @@ class SpeedyEvents():
         self.frame.disable_start_button()
         self.frame.show_cancel_button()
         self.frame.update_status_label("Testing, please wait...")
-        self.frame.output.SetValue("")
-        self.frame.progress.SetValue(0)
+        self.frame.ping_text.SetLabel("")
+        self.frame.set_progress_value(0)
         self.frame.set_cancelled(False)
-        self.frame.speed = speedtest.Speedtest()
+        self.speed = speedtest.Speedtest()
         print("Getting best server...")
-        self.frame.speed.get_best_server()
+        self.speed.get_best_server()
         print("Done getting best server.")
-        self.frame.thread = threading.Thread(target=self.run_speedtest, args=(self.frame,))
-        self.frame.thread.start()
+        self.thread = threading.Thread(target=self.run_speedtest)
+        self.thread.start()
         self.frame.append_output_text("Speed test started.\n")
         self.frame.set_focus_to_cancel_button()
 
@@ -50,36 +50,30 @@ class SpeedyEvents():
         evt = wx.PyCommandEvent(EVT_SPEEDTEST_CANCELLED)
         wx.PostEvent(frm, evt)
 
-    def run_speedtest(self, frm):
+    def run_speedtest(self):
         try:
-            frm.speed.get_best_server()
-            frm.update_status_label("Testing download speed...")
-            frm.append_output_text("Testing download speed...\n")
-            dl_speed = frm.speed.download(threads=None, callback=lambda c, t: frm.progress.SetValue(int(c / t * 100)))
-            if frm.c:
+            self.frame.set_progress_value(0)
+            self.frame.append_output_text("Testing ping...\n")
+            ping = self.speed.get_best_server()["latency"]
+            self.frame.append_output_text("Ping: {} ms\n".format(ping))
+            self.frame.update_status_label("Ping: {} ms".format(ping))
+            self.frame.set_progress_value(33)
+            if self.frame.c:
                 return
-            frm.update_status_label("Testing upload speed...")
-            frm.append_output_text("Testing upload speed...\n")
-            ul_speed = frm.speed.upload(threads=None, callback=lambda c, t: frm.progress.SetValue(int(c / t * 100)))
-            if frm.c:
+            self.frame.append_output_text("Testing download speed...\n")
+            download_speed = self.speed.download() / 1_000_000
+            self.frame.append_output_text("Download speed: {:.2f} Mbps\n".format(download_speed))
+            self.frame.download_text.SetLabel("{:.2f} Mbps".format(download_speed))
+            self.frame.set_progress_value(66)
+            if self.frame.c:
                 return
-            frm.enable_start_button()
-            frm.hide_cancel_button()
-            frm.set_progress_value(100)
-            out_text = f"Download speed: {dl_speed / 1_000_000:.2f} Mbps\nUpload speed: {ul_speed / 1_000_000:.2f} Mbps"
-            frm.update_status_label(out_text)
-            frm.append_output_text(out_text + "\n")
-            frm.append_output_text("Speed test completed.\n")
-            frm.set_focus_to_start_button()
-            frm.set_start_button_label("Start")
-            frm.start.Bind(wx.EVT_BUTTON, self.on_start)
-
-            # Fire the SpeedtestCompletedEvent to notify the frame that the speed test is completed
-            evt = SpeedtestCompletedEvent(ping_speed=0, download_speed=dl_speed, upload_speed=ul_speed)
-            wx.PostEvent(frm, evt)
-
+            self.frame.append_output_text("Testing upload speed...\n")
+            upload_speed = self.speed.upload() / 1_000_000
+            self.frame.append_output_text("Upload speed: {:.2f} Mbps\n".format(upload_speed))
+            self.frame.upload_text.SetLabel("{:.2f} Mbps".format(upload_speed))
+            self.frame.set_progress_value(100)
+            self.frame.hide_cancel_button()
+            self.frame.set_start_button_label("Start")
+            self.frame.start_button.Bind(wx.EVT_BUTTON, self.on_start)
         except Exception as e:
-            frm.enable_start_button()
-            frm.hide_cancel_button()
-            frm.set_progress_value(0)
-            frm.update_status_label("An error occurred during the speed test. Please try again later.")
+            print(e)
