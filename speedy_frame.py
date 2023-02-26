@@ -49,8 +49,8 @@ class SpeedyFrame(wx.Frame):
 
         self.speedtest_thread = threading.Thread()
         self.speedtest_thread = threading.Thread()
-        self.speed = speedtest.Speedtest()
-        self.speed.get_best_server()
+        # go away self.speed = speedtest.Speedtest()
+        # go away spamming my app self.speed.get_best_server()
         self.c = False
 
     def on_start(self, event):

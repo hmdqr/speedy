@@ -1,7 +1,7 @@
 import wx
+from wx.lib.newevent import NewCommandEvent
 import threading
 import speedtest
-from wx.lib.newevent import NewCommandEvent
 
 # Define a custom event class for when the speed test is completed
 SpeedtestCompletedEvent, EVT_SPEEDTEST_COMPLETED = NewCommandEvent()
