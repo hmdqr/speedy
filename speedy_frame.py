@@ -45,12 +45,6 @@ class SpeedyFrame(wx.Frame):
         panel.SetSizer(vbox)
 
         self.start_button.Bind(wx.EVT_BUTTON, self.on_start)
-        self.cancel_button.Bind(wx.EVT_BUTTON, self.on_cancel)
-
-        self.speedtest_thread = threading.Thread()
-        self.speedtest_thread = threading.Thread()
-        # go away self.speed = speedtest.Speedtest()
-        # go away spamming my app self.speed.get_best_server()
         self.c = False
 
     def on_start(self, event):
@@ -60,8 +54,6 @@ class SpeedyFrame(wx.Frame):
         self.ping_text.SetValue("")
         self.progress.SetValue(0)
         self.c = False
-        self.speed = speedtest.Speedtest()
-        self.speed.get_best_server()
         self.speedtest_thread = threading.Thread(target=self.run_speedtest)
         self.speedtest_thread.start()
         self.append_output_text("Speed test started.\n")
@@ -73,15 +65,30 @@ class SpeedyFrame(wx.Frame):
         self.start_button.Disable()
 
     def on_cancel(self, event):
-        self.c = True
+        with self.lock:
+            self.c = True
+    
+        # Disable the Cancel button
         self.cancel_button.Disable()
+
+        # Update the status label
         self.update_status_label("Test cancelled")
+    
+        # Reset the progress bar
         self.progress.SetValue(0)
+    
+        # Enable the Start button
         self.enable_start_button()
+    
+        # Hide the Cancel button
         self.hide_cancel_button()
+    
+        # Set the focus to the Start button
         self.set_focus_to_start_button()
+    
+        # Change the Cancel button back to a Start button
         self.set_start_button_label("Start")
-        self.start_button.Bind(wx.EVT_BUTTON, self.on_start)
+    
     def run_speedtest(self):
         try:
             self.speed.get_best_server()
