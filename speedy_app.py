@@ -1,3 +1,4 @@
+from talk import speak
 import wx
 import traceback
 from speedy_frame import SpeedyFrame

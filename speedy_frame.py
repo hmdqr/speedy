@@ -1,3 +1,4 @@
+from talk import speak
 from pubsub import pub
 import wx
 import threading
@@ -58,7 +59,7 @@ class SpeedyFrame(wx.Frame):
         self.speedtest_thread.start()
         self.append_output_text("Speed test started.\n")
         self.set_focus_to_cancel_button()
-    
+        speak("Testing started, please wait...")    
         # Change the "Start" button to a "Cancel" button
         self.start_button.SetLabel("Cancel")
         self.start_button.Bind(wx.EVT_BUTTON, self.on_cancel)
@@ -71,6 +72,7 @@ class SpeedyFrame(wx.Frame):
         self.cancel_button.Disable()
         self.update_status_label("Test cancelled")
         self.set_progress_value(0)
+        speak ("test canceled... ")
         if self.speedtest_thread.is_alive():
             self.enable_start_button()
             self.hide_cancel_button()
@@ -86,6 +88,7 @@ class SpeedyFrame(wx.Frame):
             self.display_results(results_dict)
         except speedtest.NoMatchedServers as e:
             self.display_error(str(e))
+            speak(str(e))
         except Exception as e:
             self.display_error(str(e))
     
@@ -102,6 +105,7 @@ class SpeedyFrame(wx.Frame):
         upload_str = f"{upload:.2f} Mbps"
         results = f"Ping: {ping_str}    Download: {download_str}    Upload: {upload_str}"
         wx.CallAfter(self.append_results_text, results)
+        speak(results)
         self.set_progress_value(100)
         self.enable_start_button()
         self.hide_cancel_button()
@@ -139,3 +143,4 @@ class SpeedyFrame(wx.Frame):
 
     def update_status_label(self, text):
         self.results_text.AppendText(f"{text}\n")
+        speak(f"{text}")
