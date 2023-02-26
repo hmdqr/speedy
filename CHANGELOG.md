@@ -7,10 +7,12 @@ All notable changes to this project will be documented in this file.
 ### new
 
 Improved error handling by displaying error messages in a clear and user-friendly manner.
+added the nuitka compiler
 
 ### fixes
 
 fixed a lot internal errors
+
 ## - 25-02-2023
 
 ### Added
