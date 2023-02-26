@@ -1,0 +1,1 @@
+nuitka --lto=yes --standalone --mingw64 --windows-disable-console --windows-company-name="hmdqr.me" --windows-product-name="Speed test (speedy" --windows-product-version="1.0" speedy_app.py

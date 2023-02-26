@@ -1,2 +1,6 @@
+# Ignore python things
 __pycache__/
 *.pyc
+# Ignore build and distribution folders
+speedy_app.build/
+speedy_app.dist/
