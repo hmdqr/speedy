@@ -21,7 +21,7 @@ However, any feedback is appreciated .
 
 ## Contributing
 
-If you would like to contribute to Speedy, I welcome all levels of experience and would love to hear from you! You can make a donation via [PayPal](https://paypal.me/hmdqr) or [Ko-fi](https://ko-fi.com/abc). 
+If you would like to contribute to Speedy, I welcome all levels of experience and would love to hear from you! You can make a donation via [PayPal](https://paypal.me/hmdqr) or [Ko-fi](https://ko-fi.com/hmdqr). 
 
 ### bugs or requests
 
